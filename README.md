@@ -17,7 +17,7 @@ import (
 func main() {
 	var client = gettr.NewClient(http.DefaultClient)
 
-	user, err := client.User.Info("support")
+	user, err := client.User.Info("your-user")
 	if err != nil {
 		panic(err)
 	}
@@ -29,5 +29,12 @@ func main() {
 	for user := range followers.Iter(50) {
 		fmt.Println(user.ID)
 	}
+
+	// follow-unfollows
+	user, err = client.User.Info("your-user")
+	client.SetAuthToken(user.Username, user.ID, "browsers' local_storage LS_SESSION_INFO.userinfo.token")
+	err = client.User.Follows("support")
+	err = client.User.Unfollows("support")
+	
 }
 ```
