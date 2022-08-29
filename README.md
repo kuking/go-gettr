@@ -6,18 +6,28 @@ Come back in a few days, or dive in the code.
 API is easy to use as the paginated calls are abstracted out. i.e.
 
 ```go
-var client = gettr.NewClient(http.DefaultClient)
+package main
 
-user, err := client.Users.Info("support")
-if err != nil {
-    panic(err)
-}
+import (
+	"fmt"
+	"github.com/kuking/go-gettr/gettr"
+	"net/http"
+)
 
-followers, err := client.Users.Followers(user.ID)
-if err != nil {
-    panic(err)
-}
-for user := range followers.Iter(50) {
-    fmt.Println(user.ID)
+func main() {
+	var client = gettr.NewClient(http.DefaultClient)
+
+	user, err := client.User.Info("support")
+	if err != nil {
+		panic(err)
+	}
+
+	followers, err := client.User.Followers(user.ID)
+	if err != nil {
+		panic(err)
+	}
+	for user := range followers.Iter(50) {
+		fmt.Println(user.ID)
+	}
 }
 ```
