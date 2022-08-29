@@ -19,7 +19,8 @@ type User struct {
 
 // UserService is an API for interacting with Users details
 type UserService struct {
-	sling *sling.Sling
+	sling  *sling.Sling
+	client *Client
 }
 
 type cursorQueryParameters struct {
@@ -28,9 +29,10 @@ type cursorQueryParameters struct {
 	Cursor  string `url:"Cursor,omitempty"`
 }
 
-func newUserService(sling *sling.Sling) *UserService {
+func newUserService(sling *sling.Sling, client *Client) *UserService {
 	return &UserService{
-		sling: sling,
+		sling:  sling,
+		client: client,
 	}
 }
 
@@ -76,7 +78,7 @@ func (s *UserService) userCursor(id string, cursor string, cursorType userCursor
 		Path(queryTypePath).
 		QueryStruct(
 			cursorQueryParameters{
-				Max:     20,
+				Max:     50, // current limit is 20 but leaving 50 maybe it becomes more lax
 				Include: "userinfo",
 				Cursor:  cursor,
 			}).
@@ -95,4 +97,30 @@ func (s *UserService) userCursor(id string, cursor string, cursorType userCursor
 		usersCursor.Users = append(usersCursor.Users, v)
 	}
 	return &usersCursor, relevantError(resp, err, apiError.Payload)
+}
+
+// Follows the provided username, credentials must be set with Client.SetAuthToken
+func (s *UserService) Follows(username string) error {
+	return s.buildAndDoUnFollowsRequest("follows", username)
+}
+
+// Unfollows the provided username, credentials must be set with Client.SetAuthToken
+func (s *UserService) Unfollows(username string) error {
+	return s.buildAndDoUnFollowsRequest("unfollows", username)
+}
+
+func (s *UserService) buildAndDoUnFollowsRequest(action, username string) error {
+	req, err := s.sling.New().Post("u/user/").
+		Path(s.client.username+"/").
+		Path(action+"/").Path(username).
+		Set("x-app-auth", s.client.authHeader).
+		Request()
+	if err != nil {
+		return err
+	}
+	res, err := s.client.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	return res.Body.Close()
 }
