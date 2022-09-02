@@ -1,6 +1,8 @@
 package gettr
 
 import (
+	"errors"
+	"fmt"
 	"github.com/dghubble/sling"
 )
 
@@ -9,8 +11,8 @@ type User struct {
 	Description string `json:"dsc"`
 	Nickname    string `json:"nickname"`
 	Username    string `json:"username"`
-	Following   uint32 `json:"flw"`
-	Followers   uint32 `json:"flg"`
+	Following   int    `json:"flw"`
+	Followers   int    `json:"flg"`
 	Language    string `json:"lang"`
 	UpdateDate  uint64 `json:"udate"`
 	CreateDate  uint64 `json:"cdate"`
@@ -24,9 +26,9 @@ type UserService struct {
 }
 
 type cursorQueryParameters struct {
-	Max     uint16 `url:"max,omitempty"`
+	Max     uint   `url:"max,omitempty"`
 	Include string `url:"incl,omitempty"`
-	Cursor  string `url:"Cursor,omitempty"`
+	Cursor  string `url:"cursor,omitempty"`
 }
 
 func newUserService(sling *sling.Sling, client *Client) *UserService {
@@ -91,6 +93,10 @@ func (s *UserService) userCursor(id string, cursor string, cursorType userCursor
 	switch result.Data.Aux.Cursor.(type) {
 	case string:
 		usersCursor.cursor = result.Data.Aux.Cursor.(string)
+	case float64:
+		usersCursor.cursor = ""
+	default:
+		panic(errors.New("unexpected cursor type"))
 	}
 
 	for _, v := range result.Data.Aux.Users {
@@ -119,8 +125,15 @@ func (s *UserService) buildAndDoUnFollowsRequest(action, username string) error 
 		return err
 	}
 	res, err := s.client.httpClient.Do(req)
+	defer res.Body.Close()
 	if err != nil {
 		return err
 	}
-	return res.Body.Close()
+	if res.StatusCode == 429 {
+		return errors.New("Rate-Limit [http_result: 429]")
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return fmt.Errorf("unexpected error [http_result: %v]", res.StatusCode)
+	}
+	return nil
 }

@@ -21,10 +21,10 @@ type UsersCursor struct {
 }
 
 // Iter allows a Cursor to be iterated in a for loop line any collection, abstracting out the API calls
-func (uc *UsersCursor) Iter(limit int32) <-chan User {
+func (uc *UsersCursor) Iter(limit int) <-chan User {
 	var ch = make(chan User)
 	go func() {
-		var count = int32(0)
+		var count = 0
 		var err error
 		var cursor = uc
 		for {
@@ -34,10 +34,13 @@ func (uc *UsersCursor) Iter(limit int32) <-chan User {
 					break
 				}
 			}
-			if !cursor.HasNext() || (count > limit && limit != -1) {
+			if count > limit && limit != -1 {
 				break
 			}
-			cursor, err = uc.Next()
+			if !cursor.HasNext() {
+				break
+			}
+			cursor, err = cursor.Next()
 			if err != nil {
 				fmt.Printf("Failed Cursor: %v", err)
 				break
