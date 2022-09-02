@@ -30,11 +30,11 @@ func (uc *UsersCursor) Iter(limit int) <-chan User {
 		for {
 			for _, user := range cursor.Users {
 				ch <- user
-				if count++; count > limit && limit != -1 {
+				if count++; count >= limit && limit != -1 {
 					break
 				}
 			}
-			if count > limit && limit != -1 {
+			if count >= limit && limit != -1 {
 				break
 			}
 			if !cursor.HasNext() {
