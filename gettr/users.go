@@ -25,6 +25,16 @@ type UserService struct {
 	client *Client
 }
 
+type loginQuery struct {
+	Content loginContent `json:"content"`
+}
+
+type loginContent struct {
+	Email string `json:"email"`
+	Pwd   string `json:"pwd"`
+	Sms   string `json:"sms"`
+}
+
 type cursorQueryParameters struct {
 	Max     uint   `url:"max,omitempty"`
 	Include string `url:"incl,omitempty"`
@@ -40,10 +50,10 @@ func newUserService(sling *sling.Sling, client *Client) *UserService {
 
 // Info retrieves an user detail bu username (not ID)
 func (s *UserService) Info(username string) (*User, error) {
-	result := new(result)
+	result := new(resultData)
 	user := new(User)
-	result.Data = resultData{user, resultAuxiliary{Users: nil, Cursor: nil}}
-	apiErrorWrap := aPIErrorWrap{Payload: APIError{}}
+	result.Data = resultDataAux{user, resultAuxiliary{Users: nil, Cursor: nil}}
+	apiErrorWrap := new(aPIErrorWrap)
 	resp, err := s.sling.New().
 		Path("s/uinf/").Path(username).
 		Receive(result, apiErrorWrap)
@@ -61,9 +71,8 @@ func (s *UserService) Following(id string) (*UsersCursor, error) {
 }
 
 func (s *UserService) userCursor(id string, cursor string, cursorType userCursorType) (*UsersCursor, error) {
-	result := new(result)
-	result.Data = resultData{Data: new(map[string]interface{}), Aux: resultAuxiliary{}}
-	apiError := new(aPIErrorWrap)
+	result := resultData{resultDataAux{Data: nil, Aux: resultAuxiliary{}}}
+	apiError := aPIErrorWrap{Payload: APIError{}}
 
 	var queryTypePath string
 	switch cursorType {
@@ -84,7 +93,7 @@ func (s *UserService) userCursor(id string, cursor string, cursorType userCursor
 				Include: "userinfo",
 				Cursor:  cursor,
 			}).
-		Receive(result, apiError)
+		Receive(&result, &apiError)
 
 	if err != nil {
 		return nil, relevantError(resp, err, apiError.Payload)
@@ -135,5 +144,25 @@ func (s *UserService) buildAndDoUnFollowsRequest(action, username string) error 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return fmt.Errorf("unexpected error [http_result: %v]", res.StatusCode)
 	}
+	return nil
+}
+
+func (s *UserService) Login(email, sms, pwd string) error {
+	result := resultLogin{resultLoginPayload{User: User{}, Token: "", Rtoken: ""}}
+	request := loginQuery{Content: loginContent{Email: email, Pwd: pwd, Sms: sms}}
+	apiError := new(aPIErrorWrap)
+
+	req, err := s.sling.New().
+		BodyJSON(request).
+		Post("/u/user/v2/login").
+		Receive(&result, &apiError)
+	defer req.Request.Body.Close()
+	if err != nil {
+		return err
+	}
+	if req.StatusCode >= 400 && req.StatusCode < 500 {
+		return fmt.Errorf("Acccess error [http_result %v]", req.StatusCode)
+	}
+	s.client.SetAuthToken(result.Result.User.Username, result.Result.User.ID, result.Result.Token)
 	return nil
 }

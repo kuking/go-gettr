@@ -6,10 +6,10 @@ import (
 	"net/http"
 )
 
-type result struct {
-	Data resultData `json:"result"`
-}
 type resultData struct {
+	Data resultDataAux `json:"result"`
+}
+type resultDataAux struct {
 	Data interface{}     `json:"Data"`
 	Aux  resultAuxiliary `json:"Aux"`
 }
@@ -17,6 +17,10 @@ type resultData struct {
 type resultAuxiliary struct {
 	Users  map[string]User `json:"uinf"`
 	Cursor interface{}     `json:"Cursor"`
+}
+
+type resultLogin struct {
+	Result resultLoginPayload `json:"result"`
 }
 
 type aPIErrorWrap struct {
@@ -27,6 +31,12 @@ type aPIErrorWrap struct {
 type APIError struct {
 	Code    string `json:"code"`
 	Message string `json:"emsg"`
+}
+
+type resultLoginPayload struct {
+	User   User   `json:"user"`
+	Token  string `json:"token"`
+	Rtoken string `json:"rtoken"`
 }
 
 func (e APIError) Error() string {
